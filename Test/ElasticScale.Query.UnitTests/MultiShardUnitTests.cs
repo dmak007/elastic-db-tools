@@ -27,6 +27,11 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
     [TestClass]
     public class MultiShardUnitTests
     {
+        /// <summary>
+        /// Placeholder object for us to pass into MSDRs that we create without going through a command.
+        /// </summary>
+        private IEnumerable<DbConnection> _dummyConnections = new DbConnection[0];
+
         #region Tests
 
         /// <summary>
@@ -627,7 +632,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
 
             // Create the MultiShardDataReader
             var mockMultiShardCmd = MultiShardCommand.Create(null, "test");
-            var multiShardDataReader = new MultiShardDataReader(mockMultiShardCmd, labeledDataReaders,
+            var multiShardDataReader = new MultiShardDataReader(mockMultiShardCmd.Connection, _dummyConnections, labeledDataReaders,
                 MultiShardExecutionPolicy.PartialResults, false);
 
             // Validate that if an exception is thrown when reading a column,
@@ -675,7 +680,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
                 try
                 {
                     var mockMultiShardCmd = MultiShardCommand.Create(null, "test");
-                    var multiShardDataReader = new MultiShardDataReader(mockMultiShardCmd, readers,
+                    var multiShardDataReader = new MultiShardDataReader(mockMultiShardCmd.Connection, _dummyConnections, readers,
                         MultiShardExecutionPolicy.PartialResults, false, readers.Length);
                 }
                 catch (MultiShardDataReaderInternalException ex)

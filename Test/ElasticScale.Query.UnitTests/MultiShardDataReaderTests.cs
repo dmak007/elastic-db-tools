@@ -66,6 +66,11 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
         private MultiShardCommand _dummyCommand;
 
         /// <summary>
+        /// Placeholder object for us to pass into MSDRs that we create without going through a command.
+        /// </summary>
+        private IEnumerable<DbConnection> _dummyConnections = new DbConnection[0];
+
+        /// <summary>
         ///Gets or sets the test context which provides
         ///information about and functionality for the current test run.
         ///</summary>
@@ -119,19 +124,19 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             _shardConnection = new MultiShardConnection(sm.GetShards(), MultiShardTestUtils.ShardConnectionString);
             _dummyCommand = MultiShardCommand.Create(_shardConnection, "SELECT 1");
 
-            // DEVNOTE: The MultiShardCommand object handles the connection opening logic.
-            //          BUT, since we are writing tests at a lower level than that, we need to open
-            //          the connections manually here.  Hence the loop below.
-            //
-            foreach (var conn in _shardConnection.ShardConnections)
-            {
-                conn.Item2.Open();
-            }
+            ////// DEVNOTE: The MultiShardCommand object handles the connection opening logic.
+            //////          BUT, since we are writing tests at a lower level than that, we need to open
+            //////          the connections manually here.  Hence the loop below.
+            //////
+            ////foreach (var conn in _shardConnection.ShardConnections)
+            ////{
+            ////    conn.Item2.Open();
+            ////}
 
-            _conn1 = (SqlConnection)_shardConnection.ShardConnections[0].Item2;
-            _conn2 = (SqlConnection)_shardConnection.ShardConnections[1].Item2;
-            _conn3 = (SqlConnection)_shardConnection.ShardConnections[2].Item2;
-            _conns = _shardConnection.ShardConnections.Select(x => (SqlConnection)x.Item2);
+            ////_conn1 = (SqlConnection)_shardConnection.ShardConnections[0].Item2;
+            ////_conn2 = (SqlConnection)_shardConnection.ShardConnections[1].Item2;
+            ////_conn3 = (SqlConnection)_shardConnection.ShardConnections[2].Item2;
+            ////_conns = _shardConnection.ShardConnections.Select(x => (SqlConnection)x.Item2);
         }
 
         /// <summary>
@@ -140,10 +145,10 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
         [TestCleanup()]
         public void MyTestCleanup()
         {
-            foreach (var conn in _shardConnection.ShardConnections)
-            {
-                conn.Item2.Close();
-            }
+            ////foreach (var conn in _shardConnection.ShardConnections)
+            ////{
+            ////    conn.Item2.Close();
+            ////}
         }
 
         #endregion
@@ -437,7 +442,12 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             readers[1] = GetReader(_conn2, selectSql);
             readers[2] = GetReader(_conn3, selectSql);
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(
+                _dummyCommand.Connection,
+                _dummyConnections,
+                readers,
+                MultiShardExecutionPolicy.CompleteResults,
+                true))
             {
                 // Just a single call to AddReader should be sufficient to check this logic.
                 //
@@ -464,7 +474,13 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             readers[1] = GetReader(_conn2, selectSql);
             readers[2] = null;
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true, 6))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(
+                _dummyCommand.Connection,
+                _dummyConnections,
+                readers,
+                MultiShardExecutionPolicy.CompleteResults,
+                true,
+                6))
             {
                 sdr.AddReader(readers[0]);
                 sdr.AddReader(readers[1]);
@@ -483,7 +499,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             readers[0] = GetReader(_conn1, "select 1");
             int numRowsRead = 0;
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection,
+                _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true))
             {
                 while (sdr.ReadAsync().Result)
                 {
@@ -632,7 +649,12 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             readers[0] = GetReader(_conn1, "select 1");
             readers[1] = null;
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(
+                _dummyCommand.Connection,
+                _dummyConnections,
+                readers,
+                MultiShardExecutionPolicy.CompleteResults,
+                true))
             {
                 Task t = Task.Factory.StartNew(() =>
                 {
@@ -669,7 +691,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query.UnitTests
             readers[1] = new LabeledDbDataReader(new MultiShardException(),
                 new ShardLocation("foo", "bar"), new SqlCommand() { Connection = _conn2 });
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection,
+                _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true))
             {
                 Task t = Task.Factory.StartNew(() =>
                 {
@@ -699,7 +722,8 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             LabeledDbDataReader[] readers = new LabeledDbDataReader[1];
             readers[0] = GetReader(_conn1, selectSql);
 
-            MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers,
+            MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection,
+                _dummyConnections, readers,
                 MultiShardExecutionPolicy.CompleteResults, true);
 
             AssertExtensions.WaitAndAssertThrows<NotSupportedException>(sdr.NextResultAsync());
@@ -728,7 +752,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             readers[2] = new LabeledDbDataReader(nothing, new ShardLocation(_conn2.DataSource, _conn2.Database),
                 new SqlCommand() { Connection = _conn2 });
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true))
             {
             }
         }
@@ -753,7 +777,13 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             readers[1] = GetReader(_conn2, selectSql);
             LabeledDbDataReader readerToAddAfterClose = GetReader(_conn3, selectSql);
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true, 5))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(
+                _dummyCommand.Connection,
+                _dummyConnections,
+                readers,
+                MultiShardExecutionPolicy.CompleteResults,
+                true,
+                5))
             {
                 sdr.AddReader(readers[0]);
                 sdr.AddReader(readers[1]);
@@ -772,7 +802,8 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
         {
             string selectSql = "SELECT 1";
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, new LabeledDbDataReader[0], MultiShardExecutionPolicy.PartialResults, true, 1000))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection,
+                _dummyConnections, new LabeledDbDataReader[0], MultiShardExecutionPolicy.PartialResults, true, 1000))
             {
                 for (int i = 0; i < 1000; i++)
                 {
@@ -811,7 +842,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             readers[1] = GetReader(_conn2, selectSql);
             LabeledDbDataReader closedReaderToAdd = GetReader(_conn3, selectSql);
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true, 6))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true, 6))
             {
                 sdr.AddReader(readers[0]);
                 sdr.AddReader(readers[1]);
@@ -836,7 +867,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             readers[1] = GetReader(_conn2, selectSql);
             readers[2] = GetReader(_conn3, selectSql);
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true, 5))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true, 5))
             {
                 sdr.AddReader(readers[0]);
                 sdr.AddReader(readers[1]);
@@ -858,7 +889,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             LabeledDbDataReader[] readers = new LabeledDbDataReader[0];
 
             using (MultiShardDataReader sdr = new MultiShardDataReader(
-                    _dummyCommand, 
+                    _dummyCommand.Connection, _dummyConnections, 
                     readers,
                     MultiShardExecutionPolicy.CompleteResults, 
                     addShardNamePseudoColumn: true,
@@ -917,7 +948,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             };
 
             using (MultiShardDataReader sdr = new MultiShardDataReader(
-                _dummyCommand, 
+                _dummyCommand.Connection, _dummyConnections, 
                 readers, 
                 MultiShardExecutionPolicy.CompleteResults, 
                 addShardNamePseudoColumn: true,
@@ -970,7 +1001,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             string selectSql = "SELECT 1";
             LabeledDbDataReader[] readers = new LabeledDbDataReader[0];
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers, MultiShardExecutionPolicy.CompleteResults, true, 4))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, readers, MultiShardExecutionPolicy.CompleteResults, true, 4))
             {
                 // Launch a task that adds readers (but 1 too few). We expect 4, but we only add 3.
                 sdr.AddReader(GetReader(_conn1, selectSql));
@@ -1016,7 +1047,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
             LabeledDbDataReader[] empty = new LabeledDbDataReader[0];
             IEnumerable<LabeledDbDataReader> readers = _conns.Select((x) => GetReader(x, selectSql));
 
-            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, empty, MultiShardExecutionPolicy.CompleteResults, true, 3))
+            using (MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, empty, MultiShardExecutionPolicy.CompleteResults, true, 3))
             {
                 foreach (LabeledDbDataReader reader in readers)
                 {
@@ -1638,7 +1669,7 @@ SELECT dbNameField, Test_int_Field, Test_bigint_Field  FROM ConsistentShardedTab
         {
             exceptions = new List<MultiShardSchemaMismatchException>();
 
-            MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand, readers,
+            MultiShardDataReader sdr = new MultiShardDataReader(_dummyCommand.Connection, _dummyConnections, readers,
                 MultiShardExecutionPolicy.PartialResults, addShardNamePseudoColumn);
 
             foreach (var exception in sdr.MultiShardExceptions)
