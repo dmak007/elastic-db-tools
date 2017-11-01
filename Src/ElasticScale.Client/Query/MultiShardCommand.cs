@@ -7,7 +7,7 @@
 //
 // Notes:
 // * This class is NOT thread-safe.
-// * Since the Sync API internally invokes the async API, connections to shards with 
+// * Since the Sync API internally invokes the async API, connections to shards with
 // connection string property "context connection = true" are not supported.
 // * Transaction semantics are not supported
 
@@ -30,11 +30,11 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
     // Suppression rationale: "Multi" is the spelling we want here.
     //
     /// <summary>
-    /// Complements the <see cref="MultiShardConnection"/> with a command object 
-    /// similar to the triad of <see cref="SqlConnection"/>, <see cref="SqlCommand"/>, and <see cref="SqlDataReader"/>. 
-    /// The <see cref="MultiShardCommand"/> takes a T-SQL command statement as its input and executes the 
+    /// Complements the <see cref="MultiShardConnection"/> with a command object
+    /// similar to the triad of <see cref="SqlConnection"/>, <see cref="SqlCommand"/>, and <see cref="SqlDataReader"/>.
+    /// The <see cref="MultiShardCommand"/> takes a T-SQL command statement as its input and executes the
     /// command across its collection of shards specified by its corresponding <see cref="MultiShardConnection"/>.
-    /// The results from processing the <see cref="MultiShardCommand"/> are made available through the 
+    /// The results from processing the <see cref="MultiShardCommand"/> are made available through the
     /// execute methods and the <see cref="MultiShardDataReader"/>.
     /// </summary>
     [System.ComponentModel.DesignerCategory("Code")]
@@ -69,12 +69,12 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         private readonly object _cancellationLock = new Object();
 
         /// <summary>
-        /// Global token source to enable cancellation of commands being executed 
+        /// Global token source to enable cancellation of commands being executed
         /// </summary>
         private CancellationTokenSource _innerCts = new CancellationTokenSource();
 
         /// <summary>
-        /// Task associated with current command invocation 
+        /// Task associated with current command invocation
         /// </summary>
         private Task _currentCommandTask = Task.FromResult<object>(null);
 
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// </summary>
         /// <param name="connection">The connection to shards</param>
         /// <param name="command">The command to execute against the shards</param>
-        /// <param name="commandTimeout">Command timeout<paramref name="command"/> 
+        /// <param name="commandTimeout">Command timeout<paramref name="command"/>
         /// against ALL shards</param>
         private MultiShardCommand(MultiShardConnection connection, DbCommand command, int commandTimeout)
         {
@@ -149,7 +149,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// </summary>
         /// <param name="connection">The connection to shards</param>
         /// <param name="commandText"></param>
-        /// <param name="commandTimeout">Command timeout for given commandText to be run 
+        /// <param name="commandTimeout">Command timeout for given commandText to be run
         /// against ALL shards</param>
         /// <returns></returns>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2100:Review SQL queries for security vulnerabilities"),
@@ -290,7 +290,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
 
         /// <summary>
         /// Gets or sets options that control how the command is executed.
-        /// For instance, you can use this to include the shard name as 
+        /// For instance, you can use this to include the shard name as
         /// an additional column into the result.
         /// </summary>
         public MultiShardExecutionOptions ExecutionOptions
@@ -305,14 +305,14 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         public event EventHandler<ShardExecutionEventArgs> ShardExecutionBegan;
 
         /// <summary>
-        /// The event handler invoked when execution has successfully completed on a given shard or its 
+        /// The event handler invoked when execution has successfully completed on a given shard or its
         /// shard-specific <see cref="IDataReader"/> has been returned.
         /// </summary>
         public event EventHandler<ShardExecutionEventArgs> ShardExecutionSucceeded;
 
         /// <summary>
         /// The event handler invoked when execution on a given shard has faulted. This handler is only
-        /// invoked on exceptions for which execution could not be retried further as a result of 
+        /// invoked on exceptions for which execution could not be retried further as a result of
         /// the exception's non-transience or as a result of the chosen <see cref="RetryBehavior"/>.
         /// </summary>
         public event EventHandler<ShardExecutionEventArgs> ShardExecutionFaulted;
@@ -372,7 +372,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         #region Synchronous Methods
 
         /// <summary>
-        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard 
+        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard
         /// and return the concatenation (i.e. UNION ALL) of the individual results from the shards in a
         /// <see cref="MultiShardDataReader"/>. The execution policy regarding result completeness can be controlled
         /// by setting the <see cref="MultiShardExecutionPolicy"/>. The default execution policy is to return complete results.
@@ -393,7 +393,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// <param name="behavior">Command behavior to use</param>
         /// <returns>MultiShardDataReader instance that encompasses results from all shards</returns>
         /// <exception cref="System.InvalidOperationException">If the commandText is null or empty</exception>
-        /// <exception cref="System.InvalidOperationException">If the command behavior is not supported 
+        /// <exception cref="System.InvalidOperationException">If the command behavior is not supported
         /// (CloseConnection or SingleResult or SingleRow)</exception>
         /// <exception cref="System.TimeoutException">If the CommandTimeout elapsed prior to completion</exception>
         /// </summary>
@@ -403,13 +403,13 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         }
 
         /// <summary>
-        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard 
+        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard
         /// and return the concatenation (i.e. UNION ALL) of the individual results from the shards in a
         /// <see cref="MultiShardDataReader"/>. The execution policy regarding result completeness can be controlled
         /// by setting the <see cref="MultiShardExecutionPolicy"/>. The default execution policy is to return complete results.
         /// </summary>
         /// <returns> the <see cref="MultiShardDataReader"/> instance with the overall concatenated result set. </returns>
-        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the 
+        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the
         /// specified command behavior is not supported such as CloseConnection or SingleRow.</exception>
         /// <exception cref="System.TimeoutException">thrown if the CommandTimeout elapsed prior to completion.</exception>
         /// <param name="behavior"> specifies the <see cref="CommandBehavior"/> to use.</param>
@@ -425,9 +425,9 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// <summary>
         /// - Runs the given query against all shards and returns
         ///     a reader that encompasses results from them.
-        /// 
+        ///
         /// Design Principles
-        /// - Commands are executed in a parallel, non-blocking manner. 
+        /// - Commands are executed in a parallel, non-blocking manner.
         /// - Only the calling thread is blocked until the command is complete against all shards.
         /// </summary>
         /// <param name="behavior">Command behavior to use</param>
@@ -473,13 +473,13 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         #region Async Methods
 
         /// <summary>
-        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard 
+        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard
         /// and return the concatenation (i.e. UNION ALL) of the individual results from the shards in a
         /// <see cref="MultiShardDataReader"/>. The execution policy regarding result completeness can be controlled
         /// by setting the <see cref="MultiShardExecutionPolicy"/>. The default execution policy is to return complete results.
         /// </summary>
         /// <returns> a task warapping the <see cref="MultiShardDataReader"/> instance with the overall concatenated result set. </returns>
-        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the 
+        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the
         /// specified command behavior is not supported such as CloseConnection or SingleRow.</exception>
         /// <exception cref="System.TimeoutException">thrown if the CommandTimeout elapsed prior to completion.</exception>
         /// <remarks>Any exceptions during command execution are conveyed via the returned Task.</remarks>
@@ -489,13 +489,13 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         }
 
         /// <summary>
-        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard 
+        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard
         /// and return the concatenation (i.e. UNION ALL) of the individual results from the shards in a
         /// <see cref="MultiShardDataReader"/>. The execution policy regarding result completeness can be controlled
         /// by setting the <see cref="MultiShardExecutionPolicy"/>. The default execution policy is to return complete results.
         /// </summary>
         /// <returns> a task warapping the <see cref="MultiShardDataReader"/> instance with the overall concatenated result set. </returns>
-        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the 
+        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the
         /// specified command behavior is not supported such as CloseConnection or SingleRow.</exception>
         /// <exception cref="System.TimeoutException">thrown if the CommandTimeout elapsed prior to completion.</exception>
         /// <param name="cancellationToken">Cancellation token to cancel the command execution</param>
@@ -534,13 +534,13 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         }
 
         /// <summary>
-        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard 
+        /// The ExecuteReader methods of the MultiShardCommand execute the given command statement on each shard
         /// and return the concatenation (i.e. UNION ALL) of the individual results from the shards in a
         /// <see cref="MultiShardDataReader"/>. The execution policy regarding result completeness can be controlled
         /// by setting the <see cref="MultiShardExecutionPolicy"/>. The default execution policy is to return complete results.
         /// </summary>
         /// <returns> a task warapping the <see cref="MultiShardDataReader"/> instance with the overall concatenated result set. </returns>
-        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the 
+        /// <exception cref="System.InvalidOperationException">thrown if the commandText is null or empty, or if the
         /// specified command behavior is not supported such as CloseConnection or SingleRow.</exception>
         /// <exception cref="System.TimeoutException">thrown if the CommandTimeout elapsed prior to completion.</exception>
         /// <param name="behavior">Command behavior to use</param>
@@ -582,6 +582,10 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             TransientFaultHandling.RetryPolicy connectionRetryPolicy,
             MultiShardExecutionPolicy executionPolicy)
         {
+            // Set CloseConnection flag so that connections are always closed when readers are consumed
+            // This is an extra insurance in case disposal is missed somewhere
+            behavior |= CommandBehavior.CloseConnection;
+
             TaskCompletionSource<MultiShardDataReader> currentCompletion = new TaskCompletionSource<MultiShardDataReader>();
 
             // Check if cancellation has already been requested by the user
@@ -595,8 +599,11 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             {
                 this.ValidateCommand(behavior);
 
+                // Create connections to use
+                List<Tuple<ShardLocation, DbConnection>> connections = this.Connection.CreateShardConnections();
+
                 // Create a list of sql commands to run against each of the shards
-                List<Tuple<ShardLocation, DbCommand>> shardCommands = this.GetShardDbCommands();
+                List<Tuple<ShardLocation, DbCommand>> shardCommands = this.GetShardDbCommands(connections);
 
                 // Don't allow a new invocation if a Cancel() is already in progress
                 lock (_cancellationLock)
@@ -641,27 +648,29 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                                 switch (t.Status)
                                 {
                                     case TaskStatus.Faulted:
-                                        // Close any active readers.
+                                        // Close any active readers/connections.
                                         if (this.ExecutionPolicy == MultiShardExecutionPolicy.CompleteResults)
                                         {
-                                            MultiShardCommand.TerminateActiveCommands(fanOutTask.InnerTasks);
+                                            TerminateActiveCommands(fanOutTask.InnerTasks);
                                         }
 
                                         this.HandleCommandExecutionException(
                                             currentCompletion,
+                                            connections,
                                             new MultiShardAggregateException(t.Exception.InnerExceptions),
                                             completionTrace);
                                         break;
 
                                     case TaskStatus.Canceled:
-                                        // Close any active readers.
+                                        // Close any active readers/connections.
                                         if (this.ExecutionPolicy == MultiShardExecutionPolicy.CompleteResults)
                                         {
-                                            MultiShardCommand.TerminateActiveCommands(fanOutTask.InnerTasks);
+                                            TerminateActiveCommands(fanOutTask.InnerTasks);
                                         }
 
                                         this.HandleCommandExecutionCanceled(
                                             currentCompletion,
+                                            connections,
                                             cmdCancellationMgr,
                                             completionTrace);
                                         break;
@@ -678,13 +687,14 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                                             {
                                                 // All child readers have exceptions
 
-                                                // This should only happen on PartialResults, because if we were in 
+                                                // This should only happen on PartialResults, because if we were in
                                                 // CompleteResults then any failed child reader should have caused
                                                 // the task to be in TaskStatus.Faulted
                                                 Debug.Assert(this.ExecutionPolicy == MultiShardExecutionPolicy.PartialResults);
 
                                                 this.HandleCommandExecutionException(
                                                     currentCompletion,
+                                                    connections,
                                                     new MultiShardAggregateException(childExceptions),
                                                     completionTrace);
                                             }
@@ -695,7 +705,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
 
                                                 // Hand-off the responsibility of cleanup to the MultiShardDataReader.
                                                 MultiShardDataReader shardedReader = new MultiShardDataReader(
-                                                    this,
+                                                    this.Connection,
+                                                    connections.Select(c => c.Item2),
                                                     t.Result,
                                                     executionPolicy,
                                                     includeShardNameColumn);
@@ -705,7 +716,10 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                                         }
                                         catch (Exception ex)
                                         {
-                                            HandleCommandExecutionException(currentCompletion, new MultiShardAggregateException(ex));
+                                            HandleCommandExecutionException(
+                                                currentCompletion,
+                                                connections,
+                                                new MultiShardAggregateException(ex));
                                         }
                                         break;
 
@@ -840,10 +854,10 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             // SqlClient seems to be running into a deadlock when we invoke a cancellation on
             // SqlCommand.ExecuteReaderAsync(cancellationToken) with a SqlCommand.CommandText that would
             // lead to an error (Ex. "select * from non_existant_table").
-            // As a workaround, we now explicitly close the connection associated with each shard's SqlDataReader 
+            // As a workaround, we now explicitly close the connection associated with each shard's SqlDataReader
             // once we are done reading through it in MultiShardDataReader.
             // Please refer to the bug to find a sample app with a repro, dump and symbols.
-            // 
+            //
             // behavior |= CommandBehavior.CloseConnection;
 
             s_tracer.TraceInfo(
@@ -860,12 +874,12 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                 return Task.Run(
                 async () =>
                 {
-                    // In certain cases sqlcommand doesn't reset its internal state correctly upon 
-                    // failure of an async command (especially if the connection is still open). 
-                    // This leads to unsuccessful retries on our part (see bug#2711396). 
-                    // The recommendation from the Sqlclient team is to either start off with a new sqlcommand instance 
-                    // on every retry or close and reopen the connection. 
-                    // We're going with the former approach here. 
+                    // In certain cases sqlcommand doesn't reset its internal state correctly upon
+                    // failure of an async command (especially if the connection is still open).
+                    // This leads to unsuccessful retries on our part (see bug#2711396).
+                    // The recommendation from the Sqlclient team is to either start off with a new sqlcommand instance
+                    // on every retry or close and reopen the connection.
+                    // We're going with the former approach here.
                     DbCommand commandToExecute = MultiShardUtils.CloneDbCommand(command, command.Connection);
 
                     // Open the connection if it isn't already
@@ -1010,8 +1024,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         // Suppression rationale: We don't want cancel throwing any exceptions.  Just cancel.
         //
         /// <summary>
-        /// Attempts to cancel an in progress <see cref="MultiShardCommand"/> 
-        /// and any ongoing work that is performed at the shards on behalf of the command. 
+        /// Attempts to cancel an in progress <see cref="MultiShardCommand"/>
+        /// and any ongoing work that is performed at the shards on behalf of the command.
         /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
         public override void Cancel()
@@ -1103,9 +1117,6 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                     {
                         // Cancel any commands that are in progress
                         this.Cancel();
-
-                        // Close any open connections
-                        this.Connection.Close();
                     }
                     catch (Exception) // Ignore any exceptions
                     {
@@ -1180,9 +1191,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
 
         private static void ValidateCommandBehavior(CommandBehavior cmdBehavior)
         {
-            if (((cmdBehavior & CommandBehavior.CloseConnection) != 0) ||
-                ((cmdBehavior & CommandBehavior.SingleResult) != 0) ||
-                ((cmdBehavior & CommandBehavior.SingleRow) != 0))
+            if (cmdBehavior.HasFlag(CommandBehavior.SingleResult) ||
+                cmdBehavior.HasFlag(CommandBehavior.SingleRow))
             {
                 throw new NotSupportedException(string.Format("CommandBehavior {0} is not supported", cmdBehavior));
             }
@@ -1231,32 +1241,34 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// Creates a list of commands to be executed against the shards associated with the connection.
         /// </summary>
         /// <returns>Pairs of shard locations and associated commands.</returns>
-        private List<Tuple<ShardLocation, DbCommand>> GetShardDbCommands()
+        private List<Tuple<ShardLocation, DbCommand>> GetShardDbCommands(List<Tuple<ShardLocation, DbConnection>> connections)
         {
-            return this.Connection
-                       .ShardConnections
-                       .Select(sc => new Tuple<ShardLocation, DbCommand>(sc.Item1, MultiShardUtils.CloneDbCommand(_dbCommand, sc.Item2)))
-                       .ToList();
+            return connections
+                .Select(sc => new Tuple<ShardLocation, DbCommand>(sc.Item1, MultiShardUtils.CloneDbCommand(_dbCommand, sc.Item2)))
+                .ToList();
         }
 
         private void HandleCommandExecutionException<TResult>(
             TaskCompletionSource<TResult> tcs,
+            IEnumerable<Tuple<ShardLocation, DbConnection>> connections,
             Exception ex,
             string trace = "")
         {
             // Close any open connections
-            this.Connection.Close();
+            DisposeAll(connections);
+
             s_tracer.TraceError("MultiShardCommand.ExecuteReaderAsync", ex, trace);
             tcs.SetException(ex);
         }
 
         private void HandleCommandExecutionCanceled<TResult>(
             TaskCompletionSource<TResult> tcs,
+            IEnumerable<Tuple<ShardLocation, DbConnection>> connections,
             CommandCancellationManager cancellationMgr,
             string trace = "")
         {
             // Close any open connections
-            this.Connection.Close();
+            DisposeAll(connections);
 
             s_tracer.TraceWarning("MultiShardCommand.ExecuteReaderAsync", "Command was canceled; {0}", trace);
 
@@ -1269,6 +1281,21 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             else
             {
                 tcs.SetCanceled();
+            }
+        }
+
+        private static void DisposeAll(IEnumerable<Tuple<ShardLocation, DbConnection>> connections)
+        {
+            foreach (var c in connections)
+            {
+                try
+                {
+                    c.Item2.Dispose();
+                }
+                catch (Exception)
+                {
+                    // Catch everything for Close/Dispose.
+                }
             }
         }
 
@@ -1439,7 +1466,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             return base.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        // Suppression rationale: 
+        // Suppression rationale:
         //   We do want to catch all exceptions and set them on the Task where they can be dealt with on the main thread.
         //
         /// <summary>
@@ -1467,8 +1494,11 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             {
                 ValidateCommand(behavior);
 
+                // Create connections to use
+                List<Tuple<ShardLocation, DbConnection>> connections = this.Connection.CreateShardConnections();
+
                 // Create a list of sql commands to run against each of the shards
-                List<Tuple<ShardLocation, DbCommand>> shardCommands = this.GetShardDbCommands();
+                List<Tuple<ShardLocation, DbCommand>> shardCommands = this.GetShardDbCommands(connections);
 
                 // Don't allow a new invocation if a Cancel() is already in progress
                 lock (_cancellationLock)
@@ -1496,19 +1526,18 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                                 case TaskStatus.Faulted:
                                     HandleCommandExecutionException(
                                         currentCompletion,
+                                        connections,
                                         new MultiShardAggregateException(t.Exception.InnerExceptions));
                                     break;
 
                                 case TaskStatus.Canceled:
                                     HandleCommandExecutionCanceled(
                                         currentCompletion,
+                                        connections,
                                         cmdCancellationMgr);
                                     break;
 
                                 case TaskStatus.RanToCompletion:
-                                    // Close all connections to shards
-                                    Connection.Close();
-
                                     // Check for any exceptions if this is a partial results execution policy
                                     bool success = true;
 
@@ -1526,7 +1555,9 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                                         if (exceptions.Count != 0)
                                         {
                                             success = false;
-                                            HandleCommandExecutionException(currentCompletion,
+                                            HandleCommandExecutionException(
+                                                currentCompletion,
+                                                connections,
                                                 new MultiShardAggregateException(exceptions));
                                         }
                                     }

@@ -79,8 +79,6 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             _shardConnectionFactory = new ShardListConnectionProvider(
                 shardsCollection,
                 connectionStringBuilder);
-
-            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
 
         /// <summary>
@@ -115,8 +113,6 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             _shardConnectionFactory = new ShardLocationListConnectionProvider(
                 shardLocationsCollection,
                 connectionStringBuilder);
-
-            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
 
         /// <summary>
@@ -127,8 +123,6 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         internal MultiShardConnection(List<Tuple<ShardLocation, DbConnection>> shardConnections)
         {
             _shardConnectionFactory = new ConnectionListConnectionProvider(shardConnections);
-
-            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
 
         #endregion
@@ -153,10 +147,9 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             get { return _shardConnectionFactory.ShardLocations; }
         }
 
-        internal List<Tuple<ShardLocation, DbConnection>> ShardConnections
+        internal List<Tuple<ShardLocation, DbConnection>> CreateShardConnections()
         {
-            get;
-            private set;
+            return _shardConnectionFactory.CreateShardConnections();
         }
 
         #endregion
@@ -181,18 +174,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         {
             if (!_disposed)
             {
-                // Dispose off the shard connections
-                this.ShardConnections.ForEach(
-                (c) =>
-                {
-                    if (c.Item2 != null)
-                    {
-                        c.Item2.Dispose();
-                    }
-                });
-
                 _disposed = true;
-
                 s_tracer.Warning("MultiShardConnection.Dispose", "Connection was disposed");
             }
         }
@@ -255,29 +237,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                     );
         }
 
-        // Suppression rationale:  We explicitly do not want to throw here, so we must catch all exceptions.
-        //
-        /// <summary>
-        /// Closes any open connections to shards
-        /// </summary>
-        /// <remarks>Does a best-effort close and doesn't throw</remarks>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "We do not want to throw on Close.")]
-        internal void Close()
-        {
-            foreach (var conn in this.ShardConnections)
-            {
-                if (conn.Item2 != null && conn.Item2.State != ConnectionState.Closed)
-                {
-                    try
-                    {
-                        conn.Item2.Close();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-            }
-        }
+        #region Connection providers
 
         /// <summary>
         /// Abstract provider of connections / shards for <see cref="MultiShardConnection"/>.
@@ -384,6 +344,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                 get { return null; }
             }
         }
+
+        #endregion
 
         #endregion
     }

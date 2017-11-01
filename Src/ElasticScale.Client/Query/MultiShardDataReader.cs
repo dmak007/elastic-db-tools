@@ -92,6 +92,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
 
         private bool _closed;
         private bool _disposed;
+        private IEnumerable<DbConnection> _connections;
 
         #endregion Private Fields
 
@@ -102,7 +103,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         ///     The DbDataReader objects themselves get added to the MultiShardDataReader via
         ///     calls to AddReader.
         /// </summary>
-        /// <param name="command">The <see cref="MultiShardCommand"/> associated with this reader</param>
+        /// <param name="connection">The <see cref="MultiShardConnection"/>s associated with this reader</param>
+        /// <param name="connections">The <see cref="DbConnection"/>s associated with this reader</param>
         /// <param name="inputReaders">The <see cref="LabeledDbDataReader"/> from each shard</param>
         /// <param name="executionPolicy">The execution policy to use</param>
         /// <param name="addShardNamePseudoColumn">True if we should add the $ShardName pseudo column, false if not.</param>
@@ -111,15 +113,18 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// <exception cref="MultiShardSchemaMismatchException">If the complete results execution policy is used and 
         /// the schema isn't the same across shards</exception>
         internal MultiShardDataReader(
-            MultiShardCommand command,
+            MultiShardConnection connection,
+            IEnumerable<DbConnection> connections,
             LabeledDbDataReader[] inputReaders,
             MultiShardExecutionPolicy executionPolicy,
             bool addShardNamePseudoColumn,
             int expectedReaderCount = -1)
         {
-            Contract.Requires(command != null);
+            Contract.Requires(connections != null);
 
-            this.Connection = command.Connection;
+            Connection = connection;
+
+            _connections = connections;
 
             _labeledReaders = new ConcurrentQueue<LabeledDbDataReader>();
 
@@ -1266,7 +1271,10 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                 // An extra safety-net just in-case
                 // callers don't dispose failed sqlclient readers properly or
                 // we failed to keep track of all active readers in m_inputReaders
-                this.Connection.Close();
+                foreach (DbConnection connection in _connections)
+                {
+                    connection.Dispose();
+                }
 
                 if (_schemaComparisonTemplate != null)
                 {
