@@ -53,8 +53,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// </summary>
         /// <param name="shards">The collection of <see cref="Shard"/>s used for this connection instances.</param>
         /// <param name="connectionString">
-        /// These credentials will be used to connect to the <see cref="Shard"/>s. 
-        /// The same credentials are used on all shards. 
+        /// These credentials will be used to connect to the <see cref="Shard"/>s.
+        /// The same credentials are used on all shards.
         /// Therefore, all shards need to provide the appropriate permissions for these credentials to execute the command.
         /// </param>
         /// <remarks>
@@ -71,14 +71,16 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             // Devnote: If connection string specifies Active Directory authentication and runtime is not
             // .NET 4.6 or higher, then below call will throw.
             SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder(
-                connectionString).WithApplicationNameSuffix(ApplicationNameSuffix); 
+                connectionString).WithApplicationNameSuffix(ApplicationNameSuffix);
 
-            ValidateConnectionArguments(shards, "shards", connectionStringBuilder);
+            ValidateConnectionArguments(connectionStringBuilder);
+            IReadOnlyCollection<Shard> shardsCollection = ValidateAndCopy(shards, "shards");
 
-            this.Shards = shards;
-            this.ShardConnections = shards.Select(
-                s => (CreateDbConnectionForLocation(s.Location, connectionStringBuilder))
-                ).ToList();
+            _shardConnectionFactory = new ShardListConnectionProvider(
+                shardsCollection,
+                connectionStringBuilder);
+
+            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
 
         /// <summary>
@@ -86,8 +88,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// </summary>
         /// <param name="shardLocations">The collection of <see cref="ShardLocation"/>s used for this connection instances.</param>
         /// <param name="connectionString">
-        /// These credentials will be used to connect to the <see cref="Shard"/>s. 
-        /// The same credentials are used on all shards. 
+        /// These credentials will be used to connect to the <see cref="Shard"/>s.
+        /// The same credentials are used on all shards.
         /// Therefore, all shards need to provide the appropriate permissions for these credentials to execute the command.
         /// </param>
         /// <remarks>
@@ -104,37 +106,43 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
             // Devnote: If connection string specifies Active Directory authentication and runtime is not
             // .NET 4.6 or higher, then below call will throw.
             SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder(
-                connectionString).WithApplicationNameSuffix(ApplicationNameSuffix); 
+                connectionString).WithApplicationNameSuffix(ApplicationNameSuffix);
 
-            ValidateConnectionArguments(shardLocations, "shardLocations", connectionStringBuilder);
+            ValidateConnectionArguments(connectionStringBuilder);
+            IReadOnlyCollection<ShardLocation> shardLocationsCollection =
+                ValidateAndCopy(shardLocations, "shardLocations");
 
-            this.Shards = null;
-            this.ShardConnections = shardLocations.Select(
-                s => (CreateDbConnectionForLocation(s, connectionStringBuilder))
-                ).ToList();
+            _shardConnectionFactory = new ShardLocationListConnectionProvider(
+                shardLocationsCollection,
+                connectionStringBuilder);
+
+            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
-        
+
         /// <summary>
-        /// Creates an instance of this class 
+        /// Creates an instance of this class
         /// /* TEST ONLY */
         /// </summary>
         /// <param name="shardConnections">Connections to the shards</param>
         internal MultiShardConnection(List<Tuple<ShardLocation, DbConnection>> shardConnections)
         {
-            this.ShardConnections = shardConnections;
+            _shardConnectionFactory = new ConnectionListConnectionProvider(shardConnections);
+
+            ShardConnections = _shardConnectionFactory.CreateShardConnections();
         }
 
         #endregion
 
         #region Properties
 
+        private readonly IMultiShardConnectionProvider _shardConnectionFactory;
+
         /// <summary>
         /// Gets the collection of <see cref="Shard"/>s associated with this connection.
         /// </summary>
         public IEnumerable<Shard> Shards
         {
-            get;
-            private set;
+            get { return _shardConnectionFactory.Shards; }
         }
 
         /// <summary>
@@ -142,10 +150,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         /// </summary>
         public IEnumerable<ShardLocation> ShardLocations
         {
-            get
-            {
-                return this.ShardConnections.Select(s => s.Item1);
-            }
+            get { return _shardConnectionFactory.ShardLocations; }
         }
 
         internal List<Tuple<ShardLocation, DbConnection>> ShardConnections
@@ -159,8 +164,8 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         #region Public Methods
 
         /// <summary>
-        /// Creates and returns a <see cref="MultiShardCommand"/> object. 
-        /// The <see cref="MultiShardCommand"/> object can then be used to 
+        /// Creates and returns a <see cref="MultiShardCommand"/> object.
+        /// The <see cref="MultiShardCommand"/> object can then be used to
         /// execute a command against all shards specified in the connection.
         /// </summary>
         /// <returns>the <see cref="MultiShardCommand"/> with <see cref="MultiShardCommand.CommandText"/> set to null.</returns>
@@ -196,21 +201,28 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
 
         #region Helpers
 
-        private static void ValidateConnectionArguments<T>(
+        private static IReadOnlyCollection<T> ValidateAndCopy<T>(
             IEnumerable<T> namedCollection,
-            string collectionName,
-            SqlConnectionStringBuilder connectionStringBuilder)
+            string collectionName)
         {
             if (namedCollection == null)
             {
                 throw new ArgumentNullException(collectionName);
             }
 
-            if (0 == namedCollection.Count())
+            IReadOnlyCollection<T> collectionCopy = namedCollection.ToList().AsReadOnly();
+
+            if (!collectionCopy.Any())
             {
                 throw new ArgumentException(string.Format("No {0} provided.", collectionName));
             }
 
+            return collectionCopy;
+        }
+
+        private static void ValidateConnectionArguments(
+            SqlConnectionStringBuilder connectionStringBuilder)
+        {
             // Datasource must not be set
             if (!string.IsNullOrEmpty(connectionStringBuilder.DataSource))
             {
@@ -228,7 +240,7 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
         //
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         private static Tuple<ShardLocation, DbConnection> CreateDbConnectionForLocation(
-            ShardLocation shardLocation, 
+            ShardLocation shardLocation,
             SqlConnectionStringBuilder connectionStringBuilder)
         {
             return new Tuple<ShardLocation, DbConnection>
@@ -264,6 +276,112 @@ namespace Microsoft.Azure.SqlDatabase.ElasticScale.Query
                     {
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Abstract provider of connections / shards for <see cref="MultiShardConnection"/>.
+        /// </summary>
+        private interface IMultiShardConnectionProvider
+        {
+            List<Tuple<ShardLocation, DbConnection>> CreateShardConnections();
+
+            IEnumerable<Shard> Shards { get; }
+
+            IEnumerable<ShardLocation> ShardLocations { get; }
+        }
+
+        /// <summary>
+        /// Connection provider based on a list of shards.
+        /// </summary>
+        private class ShardListConnectionProvider : IMultiShardConnectionProvider
+        {
+            private readonly SqlConnectionStringBuilder _connectionStringBuilder;
+
+            public ShardListConnectionProvider(
+                IReadOnlyCollection<Shard> shards,
+                SqlConnectionStringBuilder connectionStringBuilder)
+            {
+                Shards = shards;
+                _connectionStringBuilder = connectionStringBuilder;
+            }
+
+            public List<Tuple<ShardLocation, DbConnection>> CreateShardConnections()
+            {
+                return ShardLocations
+                    .Select(s => (CreateDbConnectionForLocation(s, _connectionStringBuilder)))
+                    .ToList();
+            }
+
+            public IEnumerable<Shard> Shards
+            {
+                get; private set;
+            }
+
+            public IEnumerable<ShardLocation> ShardLocations
+            {
+                get { return Shards.Select(s => s.Location); }
+            }
+        }
+
+        /// <summary>
+        /// Connection provider based on a list of shard locations.
+        /// </summary>
+        private class ShardLocationListConnectionProvider : IMultiShardConnectionProvider
+        {
+            private readonly SqlConnectionStringBuilder _connectionStringBuilder;
+
+            public ShardLocationListConnectionProvider(
+                IReadOnlyCollection<ShardLocation> locations,
+                SqlConnectionStringBuilder connectionStringBuilder)
+            {
+                ShardLocations = locations;
+                _connectionStringBuilder = connectionStringBuilder;
+            }
+
+            public List<Tuple<ShardLocation, DbConnection>> CreateShardConnections()
+            {
+                return ShardLocations
+                    .Select(s => (CreateDbConnectionForLocation(s, _connectionStringBuilder)))
+                    .ToList();
+            }
+
+            public IEnumerable<Shard> Shards
+            {
+                get { return null; }
+            }
+
+            public IEnumerable<ShardLocation> ShardLocations
+            {
+                get; private set;
+            }
+        }
+
+        /// <summary>
+        /// Connection provider based on a list of connections.
+        /// </summary>
+        private class ConnectionListConnectionProvider : IMultiShardConnectionProvider
+        {
+            private readonly List<Tuple<ShardLocation, DbConnection>> _connections;
+
+            public ConnectionListConnectionProvider(List<Tuple<ShardLocation, DbConnection>> connections)
+            {
+                _connections = connections;
+            }
+
+            public List<Tuple<ShardLocation, DbConnection>> CreateShardConnections()
+            {
+                return _connections;
+            }
+
+            public IEnumerable<Shard> Shards
+            {
+                get { return null; }
+            }
+
+            public IEnumerable<ShardLocation> ShardLocations
+            {
+                get { return null; }
             }
         }
 
